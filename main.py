@@ -1,6 +1,8 @@
 import numpy as np
 import torch
 import pandas as pd
+import os
+import tensorflow as tf
 import csv
 
 ifile = open("cleanedTweets.csv", "r")  # input file containing cleaned Chopra tweets
@@ -13,3 +15,5 @@ for row in reader:
     tweets.append(row)
 
 ifile.close()  # tweets read in, no longer need input file
+
+
