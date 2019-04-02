@@ -14,7 +14,7 @@ text_ints = np.array([char2int[ch] for ch in tweets],dtype=np.int32)
 
 print(text_ints)
 
-# Splitting data
+# Function for splitting data
 def split_data(sequence, batch_size, num_steps):
     total_length = batch_size * num_steps
     num_batches = int(len(sequence) / total_length)
@@ -30,3 +30,10 @@ def split_data(sequence, batch_size, num_steps):
     inputs = np.stack(split_input)
     output = np.stack(split_output)
     return inputs, output
+
+def create_batch_generator(data_x, data_y, num_steps):
+    batch_size, total_length = data_x.shape
+    num_batches = int(total_length/num_steps)
+    for b in range(num_batches):
+        yield (data_x[:, b*num_steps:(b+1)*num_steps],
+               data_y[:, b*num_steps:(b+1)*num_steps])
