@@ -1,5 +1,5 @@
 import numpy as np
-import pytorch
+import torch
 import pandas as pd
 import csv
 
