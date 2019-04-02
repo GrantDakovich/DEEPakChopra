@@ -56,3 +56,4 @@ def create_batch_generator(data_x, data_y, num_steps):
         yield (data_x[:, b*num_steps:(b+1)*num_steps],
                data_y[:, b*num_steps:(b+1)*num_steps])
 
+class CharRNN(object):
