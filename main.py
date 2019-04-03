@@ -139,3 +139,112 @@ def build(self, sampling):
     train_op = optimizer.apply_gradients(
         zip(grads, tvars),
         name='train_op')
+
+
+def train(self, train_x, train_y,
+    num_epochs, ckpt_dir='./model/'):
+
+    # Create the checkpoint directory
+    # if it does not exists
+    if not os.path.exists(ckpt_dir):
+        os.mkdir(ckpt_dir)
+
+    with tf.Session(graph=self.g) as sess:
+        sess.run(self.init_op)
+        n_batches = int(train_x.shape[1] / self.num_steps)
+        iterations = n_batches * num_epochs
+        for epoch in range(num_epochs):
+
+            # Train network
+            new_state = sess.run(self.initial_state)
+            loss = 0
+
+            # Mini-batch generator
+            minibatchgen = create_batch_generator(
+                train_x, train_y, self.num_steps)
+
+            for b, (batch_x, batch_y) in enumerate(minibatchgen, 1):
+                iteration = epoch * n_batches + b
+                feed = {'tf_x:0': batch_x,
+                        'tf_y:0': batch_y,
+                        'tf_keepprob:0': self.keep_prob,
+                        self.initial_state: new_state}
+                batch_cost, _, new_state = sess.run(
+                    ['cost:0', 'train_op',
+                     self.final_state],
+                    feed_dict=feed)
+                if iteration % 10 == 0:
+                    print('Epoch %d/%d Iteration %d'
+                          '| Training loss: %.4f' % (
+                              epoch + 1, num_epochs,
+                              iteration, batch_cost))
+
+            # Save the trained model
+            self.saver.save(
+                sess, os.path.join(
+                    ckpt_dir, 'language_modeling.ckpt'))
+
+
+def sample(self, output_length,
+           ckpt_dir, starter_seq="The "):
+    observed_seq = [ch for ch in starter_seq]
+
+    with tf.Session(graph=self.g) as sess:
+        self.saver.restore(
+        sess,
+        tf.train.latest_checkpoint(ckpt_dir))
+
+        # 1: run the model using the starter sequence
+        new_state = sess.run(self.initial_state)
+        for ch in starter_seq:
+            x = np.zeros((1, 1))
+            x[0, 0] = char2int[ch]
+            feed = {'tf_x:0': x,
+                    'tf_keepprob:0': 1.0,
+                    self.initial_state: new_state}
+            probas, new_state = sess.run(
+                        ['probabilities:0', self.final_state],
+                        feed_dict=feed)
+        ch_id = get_top_char(probas, len(tweetChars))
+        observed_seq.append(int2char[ch_id])
+
+        # 2: run the model using the updated observed_seq
+        for i in range(output_length):
+            x[0,0] = ch_id
+            feed = {'tf_x:0': x,
+            'tf_keepprob:0': 1.0,
+                    self.initial_state: new_state}
+            probas, new_state = sess.run(
+                            ['probabilities:0', self.final_state],
+                            feed_dict=feed)
+
+            ch_id = get_top_char(probas, len(tweetChars))
+            observed_seq.append(int2char[ch_id])
+
+    return ''.join(observed_seq)
+
+
+def get_top_char(probas, char_size, top_n=5):
+    p = np.squeeze(probas)
+    p[np.argsort(p)[:-top_n]] = 0.0
+    p = p / np.sum(p)
+    ch_id = np.random.choice(char_size, 1, p=p)[0]
+    return ch_id
+
+
+# Begin executing CharRNN
+batch_size = 64
+num_steps = 100
+train_x, train_y = split_data(text_ints,
+                                batch_size,
+                                num_steps)
+rnn = CharRNN(num_classes=len(tweetChars), batch_size=batch_size)
+rnn.train(train_x, train_y,
+          num_epochs=100,
+          ckpt_dir='./model-100/')
+
+del rnn
+np.random.seed(123)
+rnn = CharRNN(len(tweetChars), sampling=True)
+print(rnn.sample(ckpt_dir='./model-100/',
+      output_length=500))
